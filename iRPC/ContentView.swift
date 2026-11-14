@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var showRPCToggle = false
     @StateObject private var discord = DiscordManager(applicationId: 1_370_062_110_272_520_313)
     @State private var artworkUploadTrackKey = ""
+    @State private var uploadedArtworkURL: URL?
     private let manager = NowPlayingManager.shared
     @State private var lastUpdateTime: TimeInterval = 0
     private let updateInterval: TimeInterval = 1
@@ -487,35 +488,39 @@ struct ContentView: View {
     }
 
     private func updateDiscordDirectly(with playback: NowPlayingData) {
+        let trackKey = playback.id + "|" + playback.title + "|" + playback.artist
+        if artworkUploadTrackKey != trackKey {
+            artworkUploadTrackKey = trackKey
+            uploadedArtworkURL = nil
+            Task {
+                guard let coverURL = await AnonymousArtworkUploader.shared.artworkURL(
+                    for: playback.title, artist: playback.artist
+                ) else { return }
+                await MainActor.run {
+                    guard artworkUploadTrackKey == trackKey else { return }
+                    uploadedArtworkURL = coverURL
+                    if userEnabledRPC && manager.isPlaying &&
+                        discord.isAuthenticated && discord.isReady {
+                        discord.updateCurrentPlayback(
+                            id: playback.id,
+                            title: playback.title,
+                            artist: playback.artist,
+                            duration: playback.duration,
+                            currentTime: playback.playbackTime,
+                            artworkURL: coverURL
+                        )
+                    }
+                }
+            }
+        }
         discord.updateCurrentPlayback(
             id: playback.id,
             title: playback.title,
             artist: playback.artist,
             duration: playback.duration,
             currentTime: playback.playbackTime,
-            artworkURL: playback.artworkURL
+            artworkURL: uploadedArtworkURL ?? playback.artworkURL
         )
-        let trackKey = playback.id + "|" + playback.title + "|" + playback.artist
-        guard artworkUploadTrackKey != trackKey else { return }
-        artworkUploadTrackKey = trackKey
-        Task {
-            guard let coverURL = await AnonymousArtworkUploader.shared.artworkURL(
-                for: playback.title, artist: playback.artist
-            ) else { return }
-            await MainActor.run {
-                guard userEnabledRPC, manager.isPlaying,
-                      artworkUploadTrackKey == trackKey,
-                      discord.isAuthenticated, discord.isReady else { return }
-                discord.updateCurrentPlayback(
-                    id: playback.id,
-                    title: playback.title,
-                    artist: playback.artist,
-                    duration: playback.duration,
-                    currentTime: playback.playbackTime,
-                    artworkURL: coverURL
-                )
-            }
-        }
     }
 
     private func updatePlaybackTime() async {
