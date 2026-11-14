@@ -7,6 +7,7 @@
 
 import SwiftUI
 import NowPlayingKit
+import MediaPlayer
 
 public enum PlaybackDisplayState: Equatable {
     case loading
@@ -57,6 +58,7 @@ public struct NowPlayingView: View {
     let nowPlaying: NowPlayingData
     let manager: NowPlayingManager
     let isLastPlayed: Bool
+    @State private var embeddedArtwork: UIImage?
     
     // Compute the display state from data
     private var displayState: PlaybackDisplayState {
@@ -127,7 +129,15 @@ public struct NowPlayingView: View {
                 LastPlayedBadge()
             }
             
-            if let artworkURL = nowPlaying.artworkURL {
+            if let embeddedArtwork {
+                Image(uiImage: embeddedArtwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 300)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else if let artworkURL = nowPlaying.artworkURL {
                 ArtworkView(url: artworkURL)
             }
             
@@ -140,6 +150,18 @@ public struct NowPlayingView: View {
         }
         .listRowInsets(EdgeInsets())
         .padding()
+        .onAppear(perform: refreshEmbeddedArtwork)
+        .onChange(of: nowPlaying.id) { _, _ in refreshEmbeddedArtwork() }
+        .onReceive(NotificationCenter.default.publisher(for: .MPMusicPlayerControllerNowPlayingItemDidChange)) { _ in refreshEmbeddedArtwork() }
+    }
+
+    private func refreshEmbeddedArtwork() {
+        let player = MPMusicPlayerController.systemMusicPlayer
+        player.beginGeneratingPlaybackNotifications()
+        let item = player.nowPlayingItem
+        // Do not show a previous song's cover if the library item differs.
+        let sameTrack = item?.title == nowPlaying.title && item?.artist == nowPlaying.artist
+        embeddedArtwork = sameTrack ? item?.artwork?.image(at: CGSize(width: 800, height: 800)) : nil
     }
     
     private func LastPlayedBadge() -> some View {
