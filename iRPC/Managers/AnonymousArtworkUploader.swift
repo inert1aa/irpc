@@ -33,13 +33,13 @@ actor AnonymousArtworkUploader {
             let boundary = UUID().uuidString
             var body = Data()
             func add(_ value: String) { body.append(contentsOf: value.utf8) }
-            add("--\\(boundary)\\r\\nContent-Disposition: form-data; name=\\"reqtype\\"\\r\\n\\r\\nfileupload\\r\\n")
-            add("--\\(boundary)\\r\\nContent-Disposition: form-data; name=\\"fileToUpload\\"; filename=\\"cover.jpg\\"\\r\\nContent-Type: image/jpeg\\r\\n\\r\\n")
+            add("--\(boundary)\r\nContent-Disposition: form-data; name=\"reqtype\"\r\n\r\nfileupload\r\n")
+            add("--\(boundary)\r\nContent-Disposition: form-data; name=\"fileToUpload\"; filename=\"cover.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n")
             body.append(jpeg)
-            add("\\r\\n--\\(boundary)--\\r\\n")
+            add("\r\n--\(boundary)--\r\n")
             var request = URLRequest(url: endpoint)
             request.httpMethod = "POST"
-            request.setValue("multipart/form-data; boundary=\\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             request.httpBody = body
             request.timeoutInterval = 15
             do {
