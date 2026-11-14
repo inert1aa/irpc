@@ -2,6 +2,8 @@
 name: Build iRPC IPA
 
 on:
+  push:
+    branches: [dev]
   workflow_dispatch:
 
 jobs:
