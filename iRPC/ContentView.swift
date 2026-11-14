@@ -104,6 +104,10 @@ struct ContentView: View {
                     )
                 }
 
+                if isAuthorized {
+                    LocalMusicCard()
+                }
+
                 Section {
                     VStack(spacing: 8) {
                         HStack {
